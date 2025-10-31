@@ -1,0 +1,13 @@
+Generic single-database configuration for Alembic.
+
+This directory contains Alembic migrations for SwiftDevBot database.
+
+To create a new migration:
+    alembic revision --autogenerate -m "Description of changes"
+
+To upgrade database:
+    alembic upgrade head
+
+To downgrade database:
+    alembic downgrade -1
+

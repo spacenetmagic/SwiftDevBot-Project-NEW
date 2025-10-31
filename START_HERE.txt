@@ -1,0 +1,31 @@
+╔═══════════════════════════════════════════════════════════════╗
+║           SwiftDevBot - Быстрый старт                        ║
+╚═══════════════════════════════════════════════════════════════╝
+
+📖 Откройте файл: QUICKSTART.md
+
+Этот файл содержит пошаговую инструкцию:
+✅ Установка за 5 минут
+✅ Настройка конфигурации
+✅ Создание Telegram бота
+✅ Инициализация базы данных
+✅ Запуск и проверка
+✅ Решение проблем
+
+Или используйте README.md для общей информации.
+
+═══════════════════════════════════════════════════════════════
+
+Краткая инструкция:
+
+1. git clone <repo>
+2. cd SwiftDevBot
+3. python3 -m venv .venv && source .venv/bin/activate
+4. pip install -r requirements.txt
+5. cp .env.example .env
+6. # Отредактируйте .env (BOT_TOKEN, SUPER_ADMIN_ID)
+7. sdb db init
+8. sdb user add YOUR_ID --role super_admin
+9. sdb service start
+
+Подробнее: QUICKSTART.md

@@ -1,0 +1,698 @@
+/**
+ * Main application styles.
+ */
+
+/* CSS Variables for theming */
+:root {
+    --primary-color: #007bff;
+    --secondary-color: #6c757d;
+    --success-color: #28a745;
+    --danger-color: #dc3545;
+    --warning-color: #ffc107;
+    --info-color: #17a2b8;
+    --light-color: #f8f9fa;
+    --dark-color: #343a40;
+    --bg-color: #ffffff;
+    --text-color: #212529;
+    --border-color: #dee2e6;
+    --shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    --border-radius: 0.375rem;
+}
+
+[data-theme="dark"] {
+    --bg-color: #1a1a1a;
+    --text-color: #ffffff;
+    --border-color: #404040;
+    --light-color: #2a2a2a;
+    --shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    line-height: 1.6;
+}
+
+/* Layout */
+.app-layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+.sidebar {
+    width: 250px;
+    background-color: var(--light-color);
+    border-right: 1px solid var(--border-color);
+    padding: 1rem;
+}
+
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.page-content {
+    flex: 1;
+    padding: 2rem;
+    overflow-y: auto;
+}
+
+/* Header */
+.header {
+    background-color: var(--bg-color);
+    border-bottom: 1px solid var(--border-color);
+    padding: 1rem 2rem;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-title h1 {
+    font-size: 1.5rem;
+    margin: 0;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.role-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--border-radius);
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+.role-badge.role-admin,
+.role-badge.role-super_admin {
+    background-color: var(--danger-color);
+    color: white;
+}
+
+.role-badge.role-user {
+    background-color: var(--secondary-color);
+    color: white;
+}
+
+/* Sidebar Navigation */
+.sidebar-nav {
+    height: 100%;
+}
+
+.nav-list {
+    list-style: none;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    text-decoration: none;
+    color: var(--text-color);
+    border-radius: var(--border-radius);
+    transition: background-color 0.2s;
+}
+
+.nav-link:hover {
+    background-color: var(--border-color);
+}
+
+.nav-link.active {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.nav-icon {
+    font-size: 1.25rem;
+}
+
+/* Buttons */
+.btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+}
+
+.btn-secondary {
+    background-color: var(--secondary-color);
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #545b62;
+}
+
+.btn-success {
+    background-color: var(--success-color);
+    color: white;
+}
+
+.btn-warning {
+    background-color: var(--warning-color);
+    color: var(--dark-color);
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+.btn-active {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+/* Pages */
+.page {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.page-header {
+    margin-bottom: 2rem;
+}
+
+.page-header h2 {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.page-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Dashboard */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.dashboard-card {
+    background-color: var(--light-color);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+}
+
+.dashboard-card h3 {
+    margin-bottom: 0.5rem;
+}
+
+.dashboard-card p {
+    margin-bottom: 1rem;
+    color: var(--text-color);
+    opacity: 0.8;
+}
+
+.quick-info {
+    display: flex;
+    gap: 1rem;
+}
+
+.info-card {
+    flex: 1;
+    background-color: var(--light-color);
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+}
+
+.status {
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--border-radius);
+    font-size: 0.875rem;
+    font-weight: bold;
+}
+
+.status.active,
+.status.success {
+    background-color: var(--success-color);
+    color: white;
+}
+
+.status.inactive,
+.status.error {
+    background-color: var(--danger-color);
+    color: white;
+}
+
+/* Modules */
+.modules-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.modules-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.module-card {
+    background-color: var(--light-color);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+}
+
+.module-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.module-status.enabled {
+    color: var(--success-color);
+}
+
+.module-status.disabled {
+    color: var(--secondary-color);
+}
+
+.module-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+/* Modal */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background-color: var(--bg-color);
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    cursor: pointer;
+    color: var(--text-color);
+}
+
+/* Profile */
+.profile-card {
+    background-color: var(--light-color);
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+}
+
+.profile-details {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.detail-item {
+    display: flex;
+    gap: 1rem;
+}
+
+.detail-item label {
+    font-weight: bold;
+    min-width: 120px;
+}
+
+/* Settings */
+.settings-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.settings-section {
+    background-color: var(--light-color);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+}
+
+.settings-section h3 {
+    margin-bottom: 1rem;
+}
+
+.setting-item {
+    margin-bottom: 1rem;
+}
+
+.setting-item label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+}
+
+.setting-item select,
+.setting-item input[type="text"] {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background-color: var(--bg-color);
+    color: var(--text-color);
+}
+
+/* Admin */
+.admin-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.tab-btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    background: none;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.tab-btn.active {
+    border-bottom-color: var(--primary-color);
+    color: var(--primary-color);
+    font-weight: bold;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+}
+
+.stat-card {
+    background-color: var(--light-color);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.users-table,
+.logs-list {
+    background-color: var(--light-color);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th,
+td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+th {
+    font-weight: bold;
+    background-color: var(--border-color);
+}
+
+/* Login Page */
+.login-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.login-container {
+    background-color: var(--bg-color);
+    padding: 3rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    max-width: 400px;
+    width: 90%;
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.login-header h1 {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.telegram-widget-container {
+    text-align: center;
+}
+
+/* Loading */
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--border-color);
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Alerts */
+.alert {
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 1rem;
+}
+
+.alert-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* Notifications */
+.notifications-container {
+    position: relative;
+}
+
+.btn-icon {
+    padding: 0.5rem;
+    min-width: auto;
+    position: relative;
+}
+
+.notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background-color: var(--danger-color);
+    color: white;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+.notifications-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    min-width: 300px;
+    max-height: 400px;
+    overflow-y: auto;
+    z-index: 1000;
+    margin-top: 0.5rem;
+}
+
+.notifications-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.notifications-header button {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-color);
+}
+
+.notifications-list {
+    padding: 0.5rem;
+}
+
+.notification-item {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.notification-item:hover {
+    background-color: var(--light-color);
+}
+
+.notification-item:last-child {
+    border-bottom: none;
+}
+
+.notification-item small {
+    color: var(--text-color);
+    opacity: 0.7;
+    font-size: 0.75rem;
+}
+
+.no-notifications {
+    padding: 1rem;
+    text-align: center;
+    color: var(--text-color);
+    opacity: 0.7;
+}
+
+.connection-status {
+    font-size: 0.75rem;
+    margin-left: 0.5rem;
+}
+
+.connection-status.connected {
+    color: var(--success-color);
+}
+
+.connection-status.disconnected {
+    color: var(--danger-color);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .app-layout {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .nav-list {
+        display: flex;
+        overflow-x: auto;
+    }
+
+    .nav-link {
+        white-space: nowrap;
+    }
+
+    .page-content {
+        padding: 1rem;
+    }
+
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .modules-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .header-content {
+        flex-direction: column;
+        gap: 1rem;
+    }
+}
+

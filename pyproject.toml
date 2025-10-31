@@ -1,0 +1,58 @@
+[tool.poetry]
+name = "swiftdevbot"
+version = "0.1.0"
+description = "Advanced modular Telegram bot framework with web panel"
+authors = ["SwiftDevBot Team"]
+readme = "README.md"
+packages = [{include = "Systems"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+aiogram = "3.22.0"
+fastapi = "0.104.0"
+uvicorn = {extras = ["standard"], version = "0.24.0"}
+sqlalchemy = {extras = ["asyncio"], version = "2.0.23"}
+asyncpg = "0.29.0"
+aioredis = "2.0.1"
+pydantic = "2.5.0"
+pydantic-settings = "2.1.0"
+pyjwt = "2.8.1"
+cryptography = "41.0.7"
+watchdog = "3.0.0"
+apscheduler = "3.10.4"
+alembic = "1.12.1"
+python-dotenv = "1.0.0"
+pyyaml = "6.0.1"
+httpx = "0.25.2"
+click = "8.1.7"
+prometheus-client = "0.19.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "7.4.3"
+pytest-asyncio = "0.21.1"
+
+[tool.poetry.scripts]
+sdb = "sdb:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+filterwarnings = [
+    "ignore::pydantic.warnings.PydanticDeprecatedSince20",
+    "ignore::DeprecationWarning:pydantic",
+]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--tb=short",
+]
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "slow: Slow tests",
+]
+

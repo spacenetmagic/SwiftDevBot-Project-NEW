@@ -1,0 +1,73 @@
+# Module Manifest
+# This file describes your module's metadata, dependencies, commands, and settings
+
+# Basic Information
+name: example_module              # Module name (must match directory name)
+display_name: Example Module      # Display name for UI
+version: 1.0.0                    # Module version (semantic versioning)
+description: An example module demonstrating SwiftDevBot module structure
+author: Your Name                 # Module author
+
+# Dependencies
+# List of module names that must be loaded before this module
+dependencies: []  # Empty list if no dependencies
+  # - another_module              # Uncomment if your module depends on others
+  # - helper_module
+
+# Commands
+# List of bot commands this module provides
+commands:
+  - name: example                 # Command name (e.g., /example)
+    description: Example command that demonstrates module functionality
+    admin: false                  # true if command is admin-only
+    
+  - name: example_admin           # Admin-only command
+    description: Admin-only example command
+    admin: true
+
+# Settings Schema
+# Define module settings that users/admins can configure
+settings:
+  # User-level settings (per-user configuration)
+  theme:
+    type: string                  # Setting type: string, integer, float, boolean, array, object
+    default: "light"              # Default value
+    description: "User theme preference"
+    # Optional: enum: ["light", "dark"]
+    
+  notifications_enabled:
+    type: boolean
+    default: true
+    description: "Enable notifications for this module"
+    
+  # Admin-level settings (global configuration)
+  max_requests:
+    type: integer
+    default: 100
+    min: 1                        # Optional: minimum value
+    max: 1000                     # Optional: maximum value
+    description: "Maximum requests per user per hour"
+
+# Supported Languages
+languages:
+  - en                            # English
+  - ru                            # Russian (add more as needed)
+
+# Background Tasks
+# List of async functions that will be scheduled automatically
+background_tasks:
+  - cleanup_old_data             # Function name (must exist in module.py)
+  - send_daily_report            # Another background task
+
+# Module Flags
+enabled_by_default: false        # Should this module be enabled automatically?
+                                 # true = enabled on load, false = requires manual enable
+
+# Additional Metadata
+metadata:
+  homepage: https://github.com/yourusername/example_module
+  license: MIT
+  tags:
+    - example
+    - tutorial
+
