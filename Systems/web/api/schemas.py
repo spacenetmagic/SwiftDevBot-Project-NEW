@@ -4,7 +4,7 @@ Pydantic schemas for API responses.
 
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from Systems.core.database.models.user import UserRole
 
@@ -13,7 +13,7 @@ class UserResponse(BaseModel):
     """User response schema."""
     
     telegram_id: int = Field(..., description="Telegram user ID")
-    username: str = Field(..., description="Username")
+    username: Optional[str] = Field(None, description="Username")
     full_name: Optional[str] = Field(None, description="Full name")
     role: UserRole = Field(..., description="User role")
     is_active: bool = Field(..., description="Is user active")
@@ -27,15 +27,32 @@ class UserCreate(BaseModel):
     """User creation schema."""
     
     telegram_id: int = Field(..., description="Telegram user ID")
-    username: str = Field(..., description="Username")
-    full_name: Optional[str] = Field(None, description="Full name")
+    username: Optional[str] = Field(None, description="Username")
+    first_name: Optional[str] = Field(None, description="First name")
+    last_name: Optional[str] = Field(None, description="Last name")
+    full_name: Optional[str] = Field(
+        None, description="Full name (will be split into first/last name if provided)"
+    )
     role: UserRole = Field(default=UserRole.USER, description="User role")
+
+    @model_validator(mode="after")
+    def ensure_name_present(self) -> "UserCreate":
+        """Ensure at least first name or full name is provided."""
+
+        if not (self.first_name and self.first_name.strip()) and not (
+            self.full_name and self.full_name.strip()
+        ):
+            raise ValueError("first_name or full_name must be provided")
+
+        return self
 
 
 class UserUpdate(BaseModel):
     """User update schema."""
     
     username: Optional[str] = Field(None, description="Username")
+    first_name: Optional[str] = Field(None, description="First name")
+    last_name: Optional[str] = Field(None, description="Last name")
     full_name: Optional[str] = Field(None, description="Full name")
     is_active: Optional[bool] = Field(None, description="Is user active")
 

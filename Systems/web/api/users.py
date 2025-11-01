@@ -7,7 +7,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from Systems.core.database import get_session_factory
-from Systems.core.database.models.user import UserRole
+from Systems.core.database.models.user import User, UserRole
 from Systems.core.user.user_service import UserService
 from Systems.web.api.schemas import (
     ErrorResponse,
@@ -19,6 +19,57 @@ from Systems.web.api.schemas import (
 from Systems.web.auth.dependencies import get_current_user, require_admin, require_super_admin
 
 router = APIRouter(prefix="/api/users", tags=["users"])
+
+
+def _normalize_text(value: str | None) -> str | None:
+    """Trim string values and convert empty strings to None."""
+
+    if value is None:
+        return None
+
+    cleaned = value.strip()
+    return cleaned or None
+
+
+def _split_full_name(full_name: str | None) -> tuple[str | None, str | None]:
+    """Split full name into first and last name parts."""
+
+    full_name = _normalize_text(full_name)
+    if not full_name:
+        return None, None
+
+    parts = full_name.split(maxsplit=1)
+    if not parts:
+        return None, None
+
+    first = parts[0]
+    last = parts[1] if len(parts) > 1 else None
+    return first, last
+
+
+def _compose_full_name(first_name: str | None, last_name: str | None) -> str | None:
+    """Compose full name from first and last name."""
+
+    parts = [
+        _normalize_text(first_name),
+        _normalize_text(last_name),
+    ]
+    full_name = " ".join(part for part in parts if part)
+    return full_name or None
+
+
+def _user_to_response(user: User) -> UserResponse:
+    """Convert a User ORM object to API response schema."""
+
+    return UserResponse(
+        telegram_id=user.telegram_id,
+        username=_normalize_text(user.username),
+        full_name=_compose_full_name(user.first_name, user.last_name),
+        role=user.role,
+        is_active=user.is_active,
+        created_at=user.created_at.isoformat() if user.created_at else None,
+        updated_at=user.updated_at.isoformat() if user.updated_at else None,
+    )
 
 
 @router.get("/me", response_model=UserResponse, responses={401: {"model": ErrorResponse}})
@@ -40,15 +91,7 @@ async def get_current_user_info(
         Authorization: Bearer <token>
         ```
     """
-    return UserResponse(
-        telegram_id=current_user.telegram_id,
-        username=current_user.username,
-        full_name=current_user.full_name,
-        role=current_user.role,
-        is_active=current_user.is_active,
-        created_at=current_user.created_at.isoformat() if current_user.created_at else None,
-        updated_at=current_user.updated_at.isoformat() if current_user.updated_at else None,
-    )
+    return _user_to_response(current_user)
 
 
 @router.get(
@@ -87,18 +130,7 @@ async def list_users(
         user_service = UserService(session)
         users = await user_service.list_users(skip=skip, limit=limit)
         
-        return [
-            UserResponse(
-                telegram_id=user.telegram_id,
-                username=user.username,
-                full_name=user.full_name,
-                role=user.role,
-                is_active=user.is_active,
-                created_at=user.created_at.isoformat() if user.created_at else None,
-                updated_at=user.updated_at.isoformat() if user.updated_at else None,
-            )
-            for user in users
-        ]
+        return [_user_to_response(user) for user in users]
 
 
 @router.post(
@@ -129,11 +161,12 @@ async def create_user(
         POST /api/users/
         Authorization: Bearer <token>
         Content-Type: application/json
-        
+
         {
             "telegram_id": 123456,
             "username": "testuser",
-            "full_name": "Test User",
+            "first_name": "Test",
+            "last_name": "User",
             "role": "user"
         }
         ```
@@ -143,25 +176,35 @@ async def create_user(
     async with session_factory() as session:
         user_service = UserService(session)
         
+        normalized_username = _normalize_text(user_data.username)
+        first_name = _normalize_text(user_data.first_name)
+        last_name = _normalize_text(user_data.last_name)
+
+        derived_first, derived_last = _split_full_name(user_data.full_name)
+        if not first_name and derived_first:
+            first_name = derived_first
+        if derived_last is not None and last_name is None:
+            last_name = derived_last
+
+        if not first_name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="first_name or full_name must be provided",
+            )
+
         try:
-            user = await user_service.get_or_create_user(
+            user = await user_service.create_user(
                 telegram_id=user_data.telegram_id,
-                username=user_data.username,
-                full_name=user_data.full_name,
-                role=user_data.role,
+                data={
+                    "username": normalized_username,
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "role": user_data.role,
+                },
+                created_by=current_user.telegram_id,
             )
-            
-            await session.commit()
-            
-            return UserResponse(
-                telegram_id=user.telegram_id,
-                username=user.username,
-                full_name=user.full_name,
-                role=user.role,
-                is_active=user.is_active,
-                created_at=user.created_at.isoformat() if user.created_at else None,
-                updated_at=user.updated_at.isoformat() if user.updated_at else None,
-            )
+
+            return _user_to_response(user)
         except ValueError as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -220,23 +263,30 @@ async def update_user(
         # Update user
         if user_data.username is not None:
             user.username = user_data.username
-        if user_data.full_name is not None:
-            user.full_name = user_data.full_name
+        normalized_username = _normalize_text(user_data.username)
+        normalized_first = _normalize_text(user_data.first_name)
+        normalized_last = _normalize_text(user_data.last_name)
+
+        split_first, split_last = _split_full_name(user_data.full_name)
+
+        if normalized_username is not None:
+            user.username = normalized_username
+        if split_first and normalized_first is None:
+            normalized_first = split_first
+        if split_last is not None and normalized_last is None:
+            normalized_last = _normalize_text(split_last)
+
+        if normalized_first is not None:
+            user.first_name = normalized_first
+        if normalized_last is not None:
+            user.last_name = normalized_last
         if user_data.is_active is not None:
             user.is_active = user_data.is_active
-        
+
         await session.commit()
         await session.refresh(user)
-        
-        return UserResponse(
-            telegram_id=user.telegram_id,
-            username=user.username,
-            full_name=user.full_name,
-            role=user.role,
-            is_active=user.is_active,
-            created_at=user.created_at.isoformat() if user.created_at else None,
-            updated_at=user.updated_at.isoformat() if user.updated_at else None,
-        )
+
+        return _user_to_response(user)
 
 
 @router.delete(
@@ -331,13 +381,5 @@ async def change_user_role(
         await session.commit()
         await session.refresh(user)
         
-        return UserResponse(
-            telegram_id=user.telegram_id,
-            username=user.username,
-            full_name=user.full_name,
-            role=user.role,
-            is_active=user.is_active,
-            created_at=user.created_at.isoformat() if user.created_at else None,
-            updated_at=user.updated_at.isoformat() if user.updated_at else None,
-        )
+        return _user_to_response(user)
 

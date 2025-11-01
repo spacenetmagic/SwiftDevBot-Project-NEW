@@ -26,7 +26,8 @@ async def test_user():
         user = User(
             telegram_id=123456789,
             username="testuser",
-            full_name="Test User",
+            first_name="Test",
+            last_name="User",
             role=UserRole.USER,
             is_active=True,
         )
@@ -50,7 +51,8 @@ async def admin_user():
         user = User(
             telegram_id=987654321,
             username="admin",
-            full_name="Admin User",
+            first_name="Admin",
+            last_name="User",
             role=UserRole.ADMIN,
             is_active=True,
         )
