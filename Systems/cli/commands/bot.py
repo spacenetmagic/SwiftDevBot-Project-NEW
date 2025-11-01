@@ -326,7 +326,10 @@ def version() -> None:
         click.echo(f"  Version: 1.0.0")
         click.echo(f"  Bot Username: @{config.bot_username}")
         click.echo(f"  Database: {config.db_type}")
-        click.echo(f"  Redis: {config.redis_host}:{config.redis_port}")
+        if config.use_redis:
+            click.echo(f"  Redis: {config.redis_host}:{config.redis_port} (enabled)")
+        else:
+            click.echo(f"  Redis: disabled (using MemoryStorage)")
         click.echo(f"  Log Level: {config.log_level}")
         click.echo("")
         click.echo("✓ Information retrieved")
@@ -362,15 +365,22 @@ def test() -> None:
                 click.echo(f"✗ Database: FAILED ({e})")
                 issues.append("Database connection failed")
             
-            # Test Redis (if configured)
-            try:
-                import redis
-                r = redis.Redis(host=config.redis_host, port=config.redis_port, db=config.redis_db)
-                r.ping()
-                click.echo("✓ Redis: OK")
-            except Exception as e:
-                click.echo(f"✗ Redis: FAILED ({e})")
-                issues.append("Redis connection failed")
+            # Test Redis (if enabled)
+            if config.use_redis:
+                try:
+                    import redis
+                    r = redis.Redis(host=config.redis_host, port=config.redis_port, db=0)
+                    r.ping()
+                    click.echo("✓ Redis: OK")
+                except ImportError:
+                    click.echo("⚠ Redis: Package not installed (pip install redis)")
+                    click.echo("   Using MemoryStorage instead")
+                except Exception as e:
+                    click.echo(f"⚠ Redis: FAILED ({e})")
+                    click.echo("   Using MemoryStorage instead")
+                    click.echo("   Tip: Set USE_REDIS=false in .env to disable Redis checks")
+            else:
+                click.echo("ℹ Redis: Disabled (using MemoryStorage)")
             
             # Test bot token (if available)
             if config.bot_token and config.bot_token != "test_token":

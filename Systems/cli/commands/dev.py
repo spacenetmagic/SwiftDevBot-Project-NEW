@@ -41,6 +41,67 @@ def watch() -> None:
         click.get_current_context().exit(1)
 
 
+@dev_group.command("clean-logs")
+@click.option("--confirm", is_flag=True, help="Skip confirmation prompt")
+def clean_logs(confirm: bool) -> None:
+    """
+    Clean old log files (keeps only app.log and app_errors.log).
+    
+    Removes all per-module log files created by old logging system.
+    
+    Example:
+        sdb dev clean-logs
+        sdb dev clean-logs --confirm
+    """
+    from pathlib import Path
+    
+    log_dir = Path("Data/logs")
+    
+    if not log_dir.exists():
+        click.echo("Log directory not found")
+        return
+    
+    # Find all old log files (everything except category-based logs)
+    protected_logs = {
+        "app.log", "app_errors.log",
+        "bot.log", "bot_errors.log",
+        "web.log", "web_errors.log",
+        "core.log", "core_errors.log",
+        "modules.log", "modules_errors.log"
+    }
+    
+    old_logs = [
+        f for f in log_dir.glob("*.log")
+        if f.name not in protected_logs
+    ]
+    
+    if not old_logs:
+        click.echo("No old log files to clean")
+        return
+    
+    if not confirm:
+        click.echo(f"Found {len(old_logs)} old log files to remove:")
+        for log_file in old_logs[:10]:  # Show first 10
+            click.echo(f"  - {log_file.name}")
+        if len(old_logs) > 10:
+            click.echo(f"  ... and {len(old_logs) - 10} more")
+        if not click.confirm("Do you want to delete these files?"):
+            click.echo("Cancelled")
+            return
+    
+    # Delete old log files
+    deleted = 0
+    for log_file in old_logs:
+        try:
+            log_file.unlink()
+            deleted += 1
+        except Exception as e:
+            logger.warning(f"Failed to delete {log_file.name}: {e}")
+    
+    click.echo(f"✓ Deleted {deleted} old log files")
+    logger.info(f"Cleaned {deleted} old log files from {log_dir}")
+
+
 @dev_group.command("logs")
 @click.argument("service", required=False)
 @click.option("--follow", "-f", is_flag=True, help="Follow log output")
@@ -61,25 +122,39 @@ def logs(service: Optional[str], follow: bool, lines: int) -> None:
         sdb dev logs --lines 100
     """
     try:
-        log_dir = Path("Logs")
+        log_dir = Path("Data/logs")
         
         if not log_dir.exists():
             click.echo("No logs directory found")
             return
         
         if service:
-            log_file = log_dir / f"{service}.log"
+            # Support category-based logs: bot, web, core, modules
+            if service == "errors":
+                # Default to app_errors.log, but can specify category_errors
+                log_file = log_dir / "app_errors.log"
+            elif service.endswith("_errors"):
+                # Support: bot_errors, web_errors, etc.
+                category = service.replace("_errors", "")
+                log_file = log_dir / f"{category}_errors.log"
+            else:
+                # Support: bot, web, core, modules, app
+                log_file = log_dir / f"{service}.log"
         else:
-            # Find most recent log file
+            # Default to main app log (shows everything)
+            log_file = log_dir / "app.log"
+        
+        if not log_file.exists():
+            # Try to find any log file
             log_files = sorted(log_dir.glob("*.log"), key=lambda p: p.stat().st_mtime, reverse=True)
             if not log_files:
                 click.echo("No log files found")
                 return
             log_file = log_files[0]
-        
-        if not log_file.exists():
-            click.echo(f"Log file not found: {log_file}")
-            return
+            
+            if not log_file.exists():
+                click.echo(f"Log file not found: {log_file}")
+                return
         
         # Read log file
         if follow:

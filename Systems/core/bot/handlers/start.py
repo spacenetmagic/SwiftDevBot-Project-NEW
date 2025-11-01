@@ -77,22 +77,26 @@ async def show_profile(message: Message, user: User) -> None:
     """
     logger.info(f"Profile request from user: {user.telegram_id}")
     
+    # Escape special characters for Markdown
+    username_text = f"@{user.username}" if user.username else "не указан"
+    role_text = user.role.value.replace("_", " ").title()
+    status_text = "Активен" if user.is_active else "Неактивен"
+    created_at_text = user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else 'N/A'
+    
     profile_text = (
         f"👤 **Профиль**\n\n"
         f"🆔 ID: `{user.telegram_id}`\n"
-        f"👤 Имя: {user.first_name}"
+        f"👤 Имя: {user.first_name or 'не указано'}"
     )
     
     if user.last_name:
         profile_text += f" {user.last_name}"
     
-    if user.username:
-        profile_text += f"\n📝 Username: @{user.username}"
-    
+    profile_text += f"\n📝 Username: {username_text}"
     profile_text += (
-        f"\n🎭 Роль: {user.role.value}\n"
-        f"✅ Статус: {'Активен' if user.is_active else 'Неактивен'}\n"
-        f"📅 Создан: {user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else 'N/A'}"
+        f"\n🎭 Роль: {role_text}\n"
+        f"✅ Статус: {status_text}\n"
+        f"📅 Создан: {created_at_text}"
     )
     
     await message.answer(profile_text, parse_mode="Markdown")

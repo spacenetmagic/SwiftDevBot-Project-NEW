@@ -64,7 +64,9 @@ SUPER_ADMIN_ID=123456789
 # База данных
 DB_TYPE=sqlite  # Для начала используйте sqlite, для production - postgresql
 
-# Redis
+# Redis (опционально - для FSM storage)
+# Если Redis не установлен, будет использоваться MemoryStorage (состояние теряется при перезапуске)
+USE_REDIS=true  # Установите false, чтобы отключить Redis
 REDIS_HOST=localhost
 REDIS_PORT=6379
 
@@ -136,7 +138,7 @@ sdb bot test
 
 # Должен показать:
 # ✓ Database: OK
-# ✓ Redis: OK
+# ✓ Redis: OK (или предупреждение, если отключен - это нормально)
 # ✓ Bot Token: OK (@your_bot)
 # ✓ Modules: X installed
 ```
@@ -238,9 +240,18 @@ sdb db init --force  # ВНИМАНИЕ: удалит все данные!
 2. Убедитесь, что токен правильный (скопирован полностью)
 3. Проверьте, что токен не истек (получите новый от @BotFather)
 
-### Проблема: "Redis: FAILED"
+### Проблема: "Redis: FAILED" или Redis не установлен
 
-**Решение:**
+**Redis опционален!** Бот может работать без Redis.
+
+**Вариант 1: Отключить Redis (рекомендуется, если не нужен)**
+```env
+# В .env файле добавьте:
+USE_REDIS=false
+```
+Бот будет использовать MemoryStorage (состояние теряется при перезапуске, но для разработки это нормально).
+
+**Вариант 2: Установить Redis (если нужен для production)**
 ```bash
 # Установить Redis (Ubuntu/Debian)
 sudo apt-get install redis-server
@@ -251,6 +262,8 @@ sudo systemctl start redis-server
 # Проверить
 redis-cli ping  # Должен ответить: PONG
 ```
+
+**Примечание:** Если Redis не установлен или недоступен, бот автоматически использует MemoryStorage.
 
 ### Проблема: Модули не загружаются
 

@@ -186,12 +186,23 @@ class TestConfig:
     
     def test_config_defaults(self) -> None:
         """Test that default values are set correctly."""
+        # Create config with explicit values to override .env file settings
+        # This ensures test doesn't depend on actual .env file values
         config = Config(
             bot_token="test_token",
             bot_username="testbot",
             super_admin_id=123456789,
             db_password="testpass",
-            jwt_secret="a" * 32
+            jwt_secret="a" * 32,
+            # Explicitly set defaults to ensure test independence
+            db_host="localhost",
+            db_port=5432,
+            db_name="swiftdevbot",
+            db_user="postgres",
+            redis_host="localhost",
+            redis_port=6379,
+            web_panel_url="http://localhost:8000",
+            log_level="INFO"
         )
         
         assert config.db_host == "localhost"

@@ -46,9 +46,10 @@ class Config(BaseSettings):
     db_password: str = Field(default="", description="Database password (optional for SQLite)")
     db_path: str = Field(default="Data/database/swiftdevbot.db", description="SQLite database file path (for sqlite type)")
     
-    # Redis Configuration
-    redis_host: str = Field(default="localhost", description="Redis host")
-    redis_port: int = Field(default=6379, description="Redis port")
+    # Redis Configuration (optional - will use MemoryStorage if disabled)
+    use_redis: bool = Field(default=True, description="Enable Redis for FSM storage (disable to use MemoryStorage)")
+    redis_host: str = Field(default="localhost", description="Redis host (ignored if use_redis=False)")
+    redis_port: int = Field(default=6379, description="Redis port (ignored if use_redis=False)")
     
     # Web Panel Configuration
     web_panel_url: str = Field(default="http://localhost:8000", description="Web panel URL")
@@ -255,7 +256,10 @@ class Config(BaseSettings):
             logger.info(f"Database: SQLite ({self.db_path})")
         else:
             logger.info(f"Database: PostgreSQL ({self.db_host}:{self.db_port}/{self.db_name})")
-        logger.info(f"Redis: {self.redis_host}:{self.redis_port}")
+        if self.use_redis:
+            logger.info(f"Redis: {self.redis_host}:{self.redis_port} (enabled)")
+        else:
+            logger.info("Redis: disabled (using MemoryStorage)")
         logger.info(f"Web Panel URL: {self.web_panel_url}")
         logger.info(f"Log Level: {self.log_level}")
         logger.info(f"Bot Token: {'*' * 10}...{self.bot_token[-4:] if len(self.bot_token) > 4 else '****'}")

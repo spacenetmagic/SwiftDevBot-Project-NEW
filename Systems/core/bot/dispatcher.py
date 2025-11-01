@@ -45,24 +45,38 @@ def create_dispatcher() -> Dispatcher:
     
     # Setup FSM storage
     storage = None
-    try:
-        from redis.asyncio import Redis as AsyncRedis
-        
-        redis_client = AsyncRedis(
-            host=config.redis_host,
-            port=config.redis_port,
-            decode_responses=True,
-        )
-        storage = RedisStorage(redis=redis_client)
-        logger.info(f"Redis FSM storage initialized: {config.redis_host}:{config.redis_port}")
-    except ImportError:
-        logger.warning("Redis package not installed, using Memory storage")
+    if config.use_redis:
+        try:
+            from redis.asyncio import Redis as AsyncRedis
+            
+            # Create Redis client with short timeouts to avoid long waits if Redis is unavailable
+            redis_client = AsyncRedis(
+                host=config.redis_host,
+                port=config.redis_port,
+                decode_responses=True,
+                socket_connect_timeout=2,  # 2 seconds timeout for connection
+                socket_timeout=2,  # 2 seconds timeout for operations
+            )
+            storage = RedisStorage(redis=redis_client)
+            logger.info(f"✓ Redis FSM storage initialized: {config.redis_host}:{config.redis_port}")
+        except ImportError:
+            logger.warning("⚠ Redis package not installed (use: pip install redis), falling back to Memory storage")
+            storage = MemoryStorage()
+            logger.info("✓ Using Memory FSM storage (state will be lost on restart)")
+        except (ConnectionError, OSError, TimeoutError) as e:
+            logger.warning(f"⚠ Redis server not available ({type(e).__name__}: {e}), falling back to Memory storage")
+            logger.info("💡 Tip: Set USE_REDIS=false in .env to disable Redis checks, or start Redis server")
+            storage = MemoryStorage()
+            logger.info("✓ Using Memory FSM storage (state will be lost on restart)")
+        except Exception as e:
+            logger.warning(f"⚠ Failed to initialize Redis storage ({e}), falling back to Memory storage")
+            logger.info("💡 Tip: Set USE_REDIS=false in .env to disable Redis checks, or start Redis server")
+            storage = MemoryStorage()
+            logger.info("✓ Using Memory FSM storage (state will be lost on restart)")
+    else:
+        logger.info("ℹ Redis disabled (USE_REDIS=false), using Memory storage")
         storage = MemoryStorage()
-        logger.info("Using Memory FSM storage")
-    except Exception as e:
-        logger.warning(f"Failed to initialize Redis storage, using Memory: {e}")
-        storage = MemoryStorage()
-        logger.info("Using Memory FSM storage")
+        logger.info("✓ Using Memory FSM storage (state will be lost on restart)")
     
     # Create dispatcher
     dp = Dispatcher(storage=storage)

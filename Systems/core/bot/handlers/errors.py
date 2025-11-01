@@ -93,9 +93,16 @@ def register_error_handlers(dp: Dispatcher) -> None:
     Args:
         dp: Aiogram dispatcher
     """
-    # Register handlers
-    dp.errors.register(handle_telegram_api_error)
-    dp.errors.register(handle_unhandled_error)
+    from aiogram.exceptions import TelegramAPIError
+    
+    # Register TelegramAPIError handler
+    # In aiogram 3.x, you can only register handlers for specific exception types
+    # Base Exception class cannot be registered directly
+    dp.errors.register(TelegramAPIError, handle_telegram_api_error)
+    
+    # Note: For unhandled errors, aiogram will log them automatically
+    # If you need custom handling for all errors, use middleware instead
+    # The LoggingMiddleware already catches and logs all exceptions
     
     # Register unknown command handler
     router.message.register(handle_unknown_command)

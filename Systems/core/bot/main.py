@@ -35,13 +35,23 @@ async def shutdown_handler(
     logger.info("Initiating graceful shutdown...")
     
     try:
-        # Stop polling
-        await dp.stop_polling()
-        logger.info("Bot polling stopped")
+        # Stop polling if it's running
+        # Check if polling is running by catching RuntimeError
+        try:
+            await dp.stop_polling()
+            logger.info("Bot polling stopped")
+        except RuntimeError as e:
+            if "Polling is not started" in str(e):
+                logger.debug("Polling was not started, skipping stop")
+            else:
+                raise
         
         # Close bot session
-        await bot.session.close()
-        logger.info("Bot session closed")
+        try:
+            await bot.session.close()
+            logger.info("Bot session closed")
+        except Exception as e:
+            logger.warning(f"Error closing bot session: {e}")
         
         # Close database connections
         await close_db()
@@ -98,12 +108,17 @@ async def main() -> None:
         
         # Setup graceful shutdown
         shutdown_event = asyncio.Event()
+        polling_task_ref: list[asyncio.Task] = []  # Use list to store task reference
         
         def signal_handler(sig: int, frame: Any) -> None:
             """Handle shutdown signals (SIGINT, SIGTERM)."""
-            logger.info(f"Received signal {sig}, initiating graceful shutdown...")
-            if not shutdown_event.is_set():
-                asyncio.create_task(shutdown_handler(bot, dp, shutdown_event))
+            logger.info(f"Received signal {sig} (Ctrl+C), initiating graceful shutdown...")
+            shutdown_event.set()
+            # Cancel polling task if exists
+            if polling_task_ref:
+                task = polling_task_ref[0]
+                if task and not task.done():
+                    task.cancel()
         
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
@@ -113,30 +128,69 @@ async def main() -> None:
         logger.info(f"Bot username: @{config.bot_username}")
         logger.info("Bot is running. Press Ctrl+C to stop.")
         
-        # Start polling in background
-        polling_task = asyncio.create_task(
-            dp.start_polling(
-                bot,
-                allowed_updates=dp.resolve_used_update_types(),
-            )
-        )
-        
-        # Wait for shutdown signal
-        await shutdown_event.wait()
-        
-        # Wait for polling to stop
         try:
-            await asyncio.wait_for(polling_task, timeout=10.0)
-        except asyncio.TimeoutError:
-            logger.warning("Polling task did not stop in time, forcing shutdown")
-            polling_task.cancel()
+            # Start polling in a task
+            polling_task = asyncio.create_task(
+                dp.start_polling(
+                    bot,
+                    allowed_updates=dp.resolve_used_update_types(),
+                )
+            )
+            polling_task_ref.append(polling_task)
+            
+            # Wait for shutdown signal or polling to complete
+            try:
+                # Wait for either shutdown event or polling task to complete
+                done, pending = await asyncio.wait(
+                    {asyncio.create_task(shutdown_event.wait()), polling_task},
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+                
+                # Cancel pending tasks
+                for task in pending:
+                    task.cancel()
+                    try:
+                        await task
+                    except asyncio.CancelledError:
+                        pass
+                
+            except asyncio.CancelledError:
+                pass
+            
+            # Stop polling gracefully if still running
+            if not polling_task.done():
+                logger.info("Stopping polling...")
+                try:
+                    await dp.stop_polling()
+                except RuntimeError as e:
+                    if "Polling is not started" in str(e):
+                        logger.debug("Polling was not started, skipping stop")
+                    else:
+                        raise
+            
+            # Wait for polling task to finish
+            try:
+                await asyncio.wait_for(polling_task, timeout=5.0)
+            except (asyncio.TimeoutError, asyncio.CancelledError):
+                logger.warning("Polling task did not stop in time")
+            
+        except KeyboardInterrupt:
+            logger.info("Interrupted by user (KeyboardInterrupt)")
+            if polling_task_ref and not polling_task_ref[0].done():
+                try:
+                    await dp.stop_polling()
+                except RuntimeError as e:
+                    if "Polling is not started" in str(e):
+                        logger.debug("Polling was not started, skipping stop")
+                    else:
+                        raise
+        except asyncio.CancelledError:
+            logger.info("Polling cancelled")
+        finally:
+            # Ensure cleanup happens
+            await shutdown_handler(bot, dp, shutdown_event)
         
         logger.info("Bot stopped successfully")
-        
-    except KeyboardInterrupt:
-        logger.info("Interrupted by user")
-        if bot and dp:
-            await shutdown_handler(bot, dp, shutdown_event)
     except Exception as e:
         logger.error(f"Fatal error: {e}", exc_info=True)
         if bot and dp:
