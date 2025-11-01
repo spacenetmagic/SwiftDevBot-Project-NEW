@@ -32,32 +32,28 @@ async def shutdown_handler(
         dp: Dispatcher instance
         shutdown_event: Shutdown event
     """
-    logger.info("Initiating graceful shutdown...")
+    logger.info("🛑 Shutting down...")
     
     try:
         # Stop polling if it's running
-        # Check if polling is running by catching RuntimeError
         try:
             await dp.stop_polling()
-            logger.info("Bot polling stopped")
         except RuntimeError as e:
             if "Polling is not started" in str(e):
-                logger.debug("Polling was not started, skipping stop")
+                pass  # Already stopped, no need to log
             else:
                 raise
         
         # Close bot session
         try:
             await bot.session.close()
-            logger.info("Bot session closed")
-        except Exception as e:
-            logger.warning(f"Error closing bot session: {e}")
+        except Exception:
+            pass
         
         # Close database connections
         await close_db()
-        logger.info("Database connections closed")
         
-        logger.info("Graceful shutdown complete")
+        logger.info("✅ Shutdown complete")
     except Exception as e:
         logger.error(f"Error during shutdown: {e}", exc_info=True)
     finally:
@@ -92,17 +88,13 @@ async def main() -> None:
             module_name="bot",
         )
         
-        logger.info("=" * 50)
-        logger.info("Starting SwiftDevBot...")
-        logger.info("=" * 50)
+        logger.info("🚀 Starting SwiftDevBot...")
         
         # Initialize database
-        logger.info("Initializing database...")
         await init_db()
-        logger.info("Database initialized")
+        logger.debug("Database initialized")
         
         # Create bot and dispatcher
-        logger.info("Creating bot and dispatcher...")
         bot = create_bot()
         dp = create_dispatcher()
         
@@ -124,9 +116,7 @@ async def main() -> None:
         signal.signal(signal.SIGTERM, signal_handler)
         
         # Start polling
-        logger.info("Starting bot polling...")
-        logger.info(f"Bot username: @{config.bot_username}")
-        logger.info("Bot is running. Press Ctrl+C to stop.")
+        logger.info(f"🤖 Bot @{config.bot_username} is running. Press Ctrl+C to stop.")
         
         try:
             # Start polling in a task
@@ -175,29 +165,18 @@ async def main() -> None:
                 logger.warning("Polling task did not stop in time")
             
         except KeyboardInterrupt:
-            logger.info("Interrupted by user (KeyboardInterrupt)")
-            if polling_task_ref and not polling_task_ref[0].done():
-                try:
-                    await dp.stop_polling()
-                except RuntimeError as e:
-                    if "Polling is not started" in str(e):
-                        logger.debug("Polling was not started, skipping stop")
-                    else:
-                        raise
+            logger.info("⏹ Interrupted by user")
         except asyncio.CancelledError:
-            logger.info("Polling cancelled")
+            pass  # Silent cancellation
         finally:
             # Ensure cleanup happens
             await shutdown_handler(bot, dp, shutdown_event)
         
-        logger.info("Bot stopped successfully")
     except Exception as e:
         logger.error(f"Fatal error: {e}", exc_info=True)
         if bot and dp:
             await shutdown_handler(bot, dp, shutdown_event)
         sys.exit(1)
-    finally:
-        logger.info("Bot shutdown complete")
 
 
 if __name__ == "__main__":

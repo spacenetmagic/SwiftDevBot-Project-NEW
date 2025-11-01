@@ -40,7 +40,7 @@ def get_engine():
     
     if _engine is None:
         config = get_config()
-        logger.info(f"Creating database engine: {config.db_url}")
+        logger.debug(f"Creating database engine: {config.db_type}")
         
         # Different engine configs for different database types
         if config.db_type == "sqlite" or config.db_type == "memory":
@@ -60,7 +60,7 @@ def get_engine():
                 pool_recycle=3600,  # Recycle connections after 1 hour
             )
         
-        logger.info("Database engine created successfully")
+        logger.debug("Database engine created")
     
     return _engine
 
@@ -83,7 +83,7 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
             autoflush=False,
             autocommit=False,
         )
-        logger.info("Session factory created successfully")
+        logger.debug("Session factory created")
     
     return _session_factory
 
@@ -118,13 +118,12 @@ async def init_db() -> None:
     
     This should be called once at application startup.
     """
-    logger.info("Initializing database...")
     engine = get_engine()
     
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     
-    logger.info("Database initialized successfully")
+    logger.debug("Database tables initialized")
 
 
 async def close_db() -> None:
@@ -135,12 +134,10 @@ async def close_db() -> None:
     """
     global _engine, _session_factory
     
-    logger.info("Closing database connections...")
-    
     if _engine:
         await _engine.dispose()
         _engine = None
     
     _session_factory = None
-    logger.info("Database connections closed")
+    logger.debug("Database connections closed")
 

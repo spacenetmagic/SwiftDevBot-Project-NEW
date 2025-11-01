@@ -26,8 +26,6 @@ async def cmd_start(message: Message, user: User) -> None:
         message: Telegram message
         user: User object from AuthMiddleware
     """
-    logger.info(f"Start command from user: {user.telegram_id}")
-    
     # Get role-based menu
     keyboard = get_persistent_menu(user.role)
     
@@ -63,7 +61,7 @@ async def cmd_start(message: Message, user: User) -> None:
         reply_markup=keyboard,
     )
     
-    logger.debug(f"Start command handled for user: {user.telegram_id}")
+    logger.debug(f"/start | User: {user.telegram_id} (@{user.username or 'N/A'})")
 
 
 @router.message(lambda msg: msg.text == "📋 Профиль")
@@ -75,7 +73,7 @@ async def show_profile(message: Message, user: User) -> None:
         message: Telegram message
         user: User object
     """
-    logger.info(f"Profile request from user: {user.telegram_id}")
+    # Logged by middleware, no need to duplicate here
     
     # Escape special characters for Markdown
     username_text = f"@{user.username}" if user.username else "не указан"
@@ -100,5 +98,4 @@ async def show_profile(message: Message, user: User) -> None:
     )
     
     await message.answer(profile_text, parse_mode="Markdown")
-    logger.debug(f"Profile sent for user: {user.telegram_id}")
 

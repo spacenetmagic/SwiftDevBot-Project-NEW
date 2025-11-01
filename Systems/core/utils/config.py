@@ -247,24 +247,21 @@ class Config(BaseSettings):
         """
         Log configuration values (without sensitive data).
         """
-        logger.info("=== SwiftDevBot Configuration ===")
-        logger.info(f"Bot Username: {self.bot_username}")
-        logger.info(f"Super Admin ID: {self.super_admin_id}")
-        if self.db_type == "memory":
-            logger.info(f"Database: SQLite (in-memory)")
-        elif self.db_type == "sqlite":
-            logger.info(f"Database: SQLite ({self.db_path})")
-        else:
-            logger.info(f"Database: PostgreSQL ({self.db_host}:{self.db_port}/{self.db_name})")
-        if self.use_redis:
-            logger.info(f"Redis: {self.redis_host}:{self.redis_port} (enabled)")
-        else:
-            logger.info("Redis: disabled (using MemoryStorage)")
-        logger.info(f"Web Panel URL: {self.web_panel_url}")
-        logger.info(f"Log Level: {self.log_level}")
-        logger.info(f"Bot Token: {'*' * 10}...{self.bot_token[-4:] if len(self.bot_token) > 4 else '****'}")
-        logger.info(f"JWT Secret: {'*' * 10}...{self.jwt_secret[-4:] if len(self.jwt_secret) > 4 else '****'}")
-        logger.info("=================================")
+        # Compact configuration logging
+        db_info = (
+            f"SQLite (in-memory)" if self.db_type == "memory"
+            else f"SQLite ({self.db_path})" if self.db_type == "sqlite"
+            else f"PostgreSQL ({self.db_host}:{self.db_port}/{self.db_name})"
+        )
+        redis_info = (
+            f"{self.redis_host}:{self.redis_port}" if self.use_redis
+            else "disabled (MemoryStorage)"
+        )
+        
+        logger.info(
+            f"Config: @{self.bot_username} | DB: {db_info} | Redis: {redis_info} | "
+            f"Log: {self.log_level}"
+        )
 
 
 # Global configuration instance
@@ -287,11 +284,20 @@ def get_config() -> Config:
     
     if _config is None:
         try:
-            logger.info("Loading configuration from environment...")
+            # Load config first (before logging)
             _config = Config()
+            
+            # Now setup logger with correct log level from config
+            from Systems.core.logger import setup_logger
+            setup_logger(log_level=_config.log_level)
+            
+            # Now we can use proper logger
+            proper_logger = logging.getLogger(__name__)
+            proper_logger.info("Loading configuration from environment...")
             _config.log_config()
         except Exception as e:
-            logger.error(f"Failed to load configuration: {e}")
+            # Use basic logging if config failed
+            logging.error(f"Failed to load configuration: {e}")
             raise RuntimeError(f"Configuration error: {e}") from e
     
     return _config

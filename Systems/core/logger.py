@@ -4,6 +4,7 @@ Logging configuration module for SwiftDevBot.
 This module sets up logging for the entire application with file and console output.
 Logs are written to Data/logs/ directory with rotation support.
 Uses grouped logging by category (bot, web, db, modules) instead of per-module files.
+Console logs use Rich for beautiful formatting, file logs use simple format.
 """
 
 import logging
@@ -12,6 +13,14 @@ from pathlib import Path
 from typing import Optional
 
 from logging.handlers import RotatingFileHandler
+
+try:
+    from rich.logging import RichHandler
+    from rich.console import Console as RichConsole
+    from rich import traceback
+    RICH_AVAILABLE = True
+except ImportError:
+    RICH_AVAILABLE = False
 
 # Track if root logger is initialized
 _root_logger_initialized = False
@@ -37,7 +46,28 @@ def _setup_root_logger(log_level: str = "INFO", log_dir: Optional[Path] = None) 
     """
     global _root_logger_initialized
     
+    numeric_level = getattr(logging, log_level.upper(), logging.INFO)
+    root_logger = logging.getLogger()
+    
     if _root_logger_initialized:
+        # Logger already initialized, just update handler levels
+        for handler in root_logger.handlers:
+            # Skip error-only handlers (they should stay at ERROR level)
+            if hasattr(handler, 'level') and handler.level > logging.ERROR:
+                continue
+            
+            # Update level for console handlers and file handlers (except error-only)
+            if isinstance(handler, logging.StreamHandler):
+                handler.setLevel(numeric_level)
+            elif RICH_AVAILABLE and isinstance(handler, RichHandler):
+                handler.setLevel(numeric_level)
+            elif isinstance(handler, RotatingFileHandler):
+                # Update file handler level (but keep error handlers at ERROR)
+                if handler.level <= logging.ERROR:
+                    handler.setLevel(numeric_level)
+        
+        # Update SQLAlchemy and aiogram logger levels
+        _configure_external_loggers(log_level)
         return
     
     # Determine log directory
@@ -49,25 +79,46 @@ def _setup_root_logger(log_level: str = "INFO", log_dir: Optional[Path] = None) 
     # Create log directory if it doesn't exist
     log_dir.mkdir(parents=True, exist_ok=True)
     
-    # Get root logger
-    root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)  # Set to lowest level, handlers will filter
     
     # Clear existing handlers
     root_logger.handlers.clear()
     
-    # Create formatter
-    formatter = logging.Formatter(
-        fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    # Console handler with Rich formatting (beautiful, colorful output)
+    if RICH_AVAILABLE:
+        # Use Rich handler for beautiful console output
+        console_handler = RichHandler(
+            console=RichConsole(stderr=False, force_terminal=True),
+            show_time=True,
+            show_path=False,  # Don't show file path to keep logs clean
+            rich_tracebacks=True,
+            tracebacks_show_locals=False,
+            markup=True,
+            log_time_format="[%X]",  # HH:MM:SS format
+        )
+        console_handler.setLevel(numeric_level)
+        # Rich handler has its own formatting, no need for formatter
+        root_logger.addHandler(console_handler)
+        
+        # Enable rich traceback formatting
+        traceback.install()
+    else:
+        # Fallback to simple console handler if Rich is not available
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setLevel(numeric_level)
+        # Simple format for console if Rich not available
+        simple_formatter = logging.Formatter(
+            fmt="[%(asctime)s] %(levelname)-8s | %(message)s",
+            datefmt="%H:%M:%S"
+        )
+        console_handler.setFormatter(simple_formatter)
+        root_logger.addHandler(console_handler)
+    
+    # File formatter (simple, structured format for files)
+    file_formatter = logging.Formatter(
+        fmt="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S"
     )
-    
-    # Console handler (all logs to console)
-    console_handler = logging.StreamHandler(sys.stdout)
-    numeric_level = getattr(logging, log_level.upper(), logging.INFO)
-    console_handler.setLevel(numeric_level)
-    console_handler.setFormatter(formatter)
-    root_logger.addHandler(console_handler)
     
     # Category-based log files (order matters - more specific first)
     # bot must come before core, as bot starts with Systems.core.bot
@@ -97,7 +148,7 @@ def _setup_root_logger(log_level: str = "INFO", log_dir: Optional[Path] = None) 
             encoding="utf-8"
         )
         category_handler.setLevel(numeric_level)
-        category_handler.setFormatter(formatter)
+        category_handler.setFormatter(file_formatter)
         category_handler.addFilter(category_filter)
         root_logger.addHandler(category_handler)
         
@@ -110,7 +161,7 @@ def _setup_root_logger(log_level: str = "INFO", log_dir: Optional[Path] = None) 
             encoding="utf-8"
         )
         category_error_handler.setLevel(logging.ERROR)
-        category_error_handler.setFormatter(formatter)
+        category_error_handler.setFormatter(file_formatter)
         category_error_handler.addFilter(category_filter)
         root_logger.addHandler(category_error_handler)
         
@@ -125,7 +176,7 @@ def _setup_root_logger(log_level: str = "INFO", log_dir: Optional[Path] = None) 
         encoding="utf-8"
     )
     app_file_handler.setLevel(numeric_level)
-    app_file_handler.setFormatter(formatter)
+    app_file_handler.setFormatter(file_formatter)
     app_file_handler.addFilter(lambda record: not _matches_any_category(record, categories))
     root_logger.addHandler(app_file_handler)
     
@@ -138,14 +189,61 @@ def _setup_root_logger(log_level: str = "INFO", log_dir: Optional[Path] = None) 
         encoding="utf-8"
     )
     app_error_handler.setLevel(logging.ERROR)
-    app_error_handler.setFormatter(formatter)
+    app_error_handler.setFormatter(file_formatter)
     app_error_handler.addFilter(lambda record: not _matches_any_category(record, categories))
     root_logger.addHandler(app_error_handler)
     
+    # Configure external library loggers
+    _configure_external_loggers(log_level)
+    
     _root_logger_initialized = True
-    log_files = ", ".join([f"{cat}.log, {cat}_errors.log" for cat in categories.keys()])
-    root_logger.info(f"Root logger initialized with level {log_level}")
-    root_logger.debug(f"Category log files: {log_files}, app.log, app_errors.log")
+    # Logger is ready, no need to log initialization (keep console clean)
+
+
+def _configure_external_loggers(log_level: str) -> None:
+    """
+    Configure external library loggers to suppress verbose logs.
+    
+    Args:
+        log_level: Current log level
+    """
+    numeric_level = getattr(logging, log_level.upper(), logging.INFO)
+    
+    # Configure SQLAlchemy loggers to suppress verbose DEBUG logs
+    # SQLAlchemy DEBUG logs are too verbose for normal operation (shows every SQL query)
+    sqlalchemy_loggers = [
+        "sqlalchemy.engine",
+        "sqlalchemy.pool",
+        "sqlalchemy.dialects",
+        "sqlalchemy.orm",
+        "sqlalchemy.events",
+    ]
+    
+    for logger_name in sqlalchemy_loggers:
+        sqlalchemy_logger = logging.getLogger(logger_name)
+        sqlalchemy_logger.setLevel(logging.WARNING)  # Only show warnings and errors
+        sqlalchemy_logger.propagate = True  # Propagate to root logger
+    
+    # Configure aiogram loggers - keep INFO for important messages
+    aiogram_loggers = [
+        "aiogram.dispatcher",
+        "aiogram.client",
+        "aiogram.webhook",
+    ]
+    
+    for logger_name in aiogram_loggers:
+        aiogram_logger = logging.getLogger(logger_name)
+        # Keep INFO for important messages, suppress DEBUG unless explicitly requested
+        if numeric_level <= logging.DEBUG:
+            aiogram_logger.setLevel(logging.DEBUG)
+        else:
+            aiogram_logger.setLevel(logging.INFO)
+        aiogram_logger.propagate = True
+    
+    # Suppress aiosqlite verbose logs (SQLite connection logs)
+    aiosqlite_logger = logging.getLogger("aiosqlite")
+    aiosqlite_logger.setLevel(logging.WARNING)
+    aiosqlite_logger.propagate = True
 
 
 def _should_log_to_category(record: logging.LogRecord, category: str, prefixes: list[str]) -> bool:
@@ -189,6 +287,9 @@ def setup_logger(
 ) -> logging.Logger:
     """
     Set up root logger (for backward compatibility).
+    
+    This function can be called multiple times to update log level.
+    If logger is already initialized, it will update handler levels.
     
     Args:
         log_level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)

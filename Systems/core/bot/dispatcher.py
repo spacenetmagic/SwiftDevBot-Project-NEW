@@ -39,8 +39,6 @@ def create_dispatcher() -> Dispatcher:
         await dp.start_polling(bot)
         ```
     """
-    logger.info("Creating dispatcher...")
-    
     config = get_config()
     
     # Setup FSM storage
@@ -58,25 +56,19 @@ def create_dispatcher() -> Dispatcher:
                 socket_timeout=2,  # 2 seconds timeout for operations
             )
             storage = RedisStorage(redis=redis_client)
-            logger.info(f"✓ Redis FSM storage initialized: {config.redis_host}:{config.redis_port}")
+            logger.debug(f"Redis storage: {config.redis_host}:{config.redis_port}")
         except ImportError:
-            logger.warning("⚠ Redis package not installed (use: pip install redis), falling back to Memory storage")
+            logger.warning("Redis package not installed, using MemoryStorage")
             storage = MemoryStorage()
-            logger.info("✓ Using Memory FSM storage (state will be lost on restart)")
         except (ConnectionError, OSError, TimeoutError) as e:
-            logger.warning(f"⚠ Redis server not available ({type(e).__name__}: {e}), falling back to Memory storage")
-            logger.info("💡 Tip: Set USE_REDIS=false in .env to disable Redis checks, or start Redis server")
+            logger.warning(f"Redis unavailable ({type(e).__name__}), using MemoryStorage")
             storage = MemoryStorage()
-            logger.info("✓ Using Memory FSM storage (state will be lost on restart)")
         except Exception as e:
-            logger.warning(f"⚠ Failed to initialize Redis storage ({e}), falling back to Memory storage")
-            logger.info("💡 Tip: Set USE_REDIS=false in .env to disable Redis checks, or start Redis server")
+            logger.warning(f"Redis init failed ({e}), using MemoryStorage")
             storage = MemoryStorage()
-            logger.info("✓ Using Memory FSM storage (state will be lost on restart)")
     else:
-        logger.info("ℹ Redis disabled (USE_REDIS=false), using Memory storage")
         storage = MemoryStorage()
-        logger.info("✓ Using Memory FSM storage (state will be lost on restart)")
+        logger.debug("Using MemoryStorage (Redis disabled)")
     
     # Create dispatcher
     dp = Dispatcher(storage=storage)
@@ -94,16 +86,13 @@ def create_dispatcher() -> Dispatcher:
     # Global RBAC can be added here if needed
     # dp.message.middleware(RBACMiddleware(required_permission="user.read"))
     
-    logger.info("Middleware registered: Logging -> Auth")
-    
     # Register routers
     dp.include_router(start_router)
-    logger.info("Routers registered: start")
     
     # Register error handlers
     register_error_handlers(dp)
     
-    logger.info("Dispatcher created successfully")
+    logger.debug("Dispatcher initialized")
     return dp
 
 
@@ -123,6 +112,6 @@ def create_bot() -> Bot:
         ),
     )
     
-    logger.info(f"Bot created: @{config.bot_username}")
+    logger.debug(f"Bot created: @{config.bot_username}")
     return bot
 

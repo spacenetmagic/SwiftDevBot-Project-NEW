@@ -1,13 +1,17 @@
 """
-CLI commands for bot management.
+CLI commands for bot management with Typer + Rich.
 """
 
 import asyncio
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Annotated, Optional
 
-import click
+import typer
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+from rich import box
 
 from Systems.core.database import get_session_factory
 from Systems.core.logger import get_logger
@@ -18,23 +22,22 @@ from sqlalchemy import text
 
 logger = get_logger(__name__)
 
+# Create Typer app
+app = typer.Typer(
+    name="bot",
+    help="Bot management commands",
+    rich_markup_mode="rich",
+)
 
-@click.group(name="bot")
-def bot_group() -> None:
-    """Bot management commands."""
-    pass
+# Create console for Rich output
+console = Console()
 
 
-@bot_group.command("start")
+@app.command("start", help="Start the bot service")
 def start() -> None:
-    """
-    Start the bot service.
-    
-    Example:
-        sdb bot start
-    """
+    """Start the bot service."""
     try:
-        click.echo("Starting bot service...")
+        console.print("[bold green]Starting bot service...[/bold green]")
         logger.info("Starting bot service via CLI")
         
         # Lazy import to avoid circular dependencies
@@ -45,32 +48,27 @@ def start() -> None:
             try:
                 asyncio.run(run_bot())
             except KeyboardInterrupt:
-                click.echo("\nStopped by user")
+                console.print("\n[yellow]Stopped by user[/yellow]")
                 logger.info("Bot service stopped by user")
         except ImportError as e:
             logger.error(f"Failed to import bot main: {e}")
-            click.echo(f"Error: Failed to start bot service: {e}", err=True)
+            console.print(f"[red]Error:[/red] Failed to start bot service: {e}")
             sys.exit(1)
         
     except Exception as e:
         logger.error(f"Failed to start service: {e}", exc_info=True)
-        click.echo(f"Error: {str(e)}", err=True)
+        console.print(f"[red]Error:[/red] {str(e)}")
         sys.exit(1)
 
 
-@bot_group.command("stop")
+@app.command("stop", help="Stop the bot service")
 def stop() -> None:
-    """
-    Stop the bot service.
-    
-    Example:
-        sdb bot stop
-    """
+    """Stop the bot service."""
     try:
         import psutil
         import os
         
-        click.echo("Stopping bot service...")
+        console.print("[yellow]Stopping bot service...[/yellow]")
         
         # Find bot process
         current_pid = os.getpid()
@@ -93,15 +91,15 @@ def stop() -> None:
                 bot_process.terminate()
                 # Wait for graceful shutdown (5 seconds)
                 bot_process.wait(timeout=5)
-                click.echo("✓ Bot service stopped gracefully")
+                console.print("[green]✓[/green] Bot service stopped gracefully")
                 logger.info(f"Bot process {bot_process.pid} stopped")
             except psutil.TimeoutExpired:
                 # Force kill if didn't stop gracefully
                 bot_process.kill()
-                click.echo("⚠ Bot service force stopped")
+                console.print("[yellow]⚠[/yellow] Bot service force stopped")
                 logger.warning(f"Bot process {bot_process.pid} force killed")
             except Exception as e:
-                click.echo(f"✗ Error stopping bot: {e}", err=True)
+                console.print(f"[red]✗[/red] Error stopping bot: {e}")
                 sys.exit(1)
         else:
             # Try to find by process name pattern
@@ -112,32 +110,27 @@ def stop() -> None:
                         if proc.info['pid'] != current_pid:
                             proc.terminate()
                             proc.wait(timeout=3)
-                            click.echo("✓ Bot service stopped")
+                            console.print("[green]✓[/green] Bot service stopped")
                             return
                 except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.TimeoutExpired):
                     continue
             
-            click.echo("⚠ Bot service not running")
+            console.print("[yellow]⚠[/yellow] Bot service not running")
             logger.info("Bot stop requested but no running process found")
         
     except ImportError:
-        click.echo("✗ Error: psutil not installed. Install with: pip install psutil", err=True)
-        click.echo("  Alternative: Use Ctrl+C in the terminal where bot is running", err=True)
+        console.print("[red]✗[/red] Error: psutil not installed. Install with: [cyan]pip install psutil[/cyan]")
+        console.print("  Alternative: Use Ctrl+C in the terminal where bot is running")
         sys.exit(1)
     except Exception as e:
         logger.error(f"Failed to stop service: {e}", exc_info=True)
-        click.echo(f"Error: {str(e)}", err=True)
+        console.print(f"[red]Error:[/red] {str(e)}")
         sys.exit(1)
 
 
-@bot_group.command("restart")
+@app.command("restart", help="Restart the bot service")
 def restart() -> None:
-    """
-    Restart the bot service.
-    
-    Example:
-        sdb bot restart
-    """
+    """Restart the bot service."""
     try:
         # Stop first
         stop()
@@ -147,29 +140,26 @@ def restart() -> None:
         time.sleep(1)
         
         # Start
-        click.echo("Restarting bot service...")
+        console.print("[bold green]Restarting bot service...[/bold green]")
         start()
         
     except Exception as e:
         logger.error(f"Failed to restart service: {e}", exc_info=True)
-        click.echo(f"Error: {str(e)}", err=True)
+        console.print(f"[red]Error:[/red] {str(e)}")
         sys.exit(1)
 
 
-@bot_group.command("status")
+@app.command("status", help="Show bot service status")
 def status() -> None:
-    """
-    Show bot service status.
-    
-    Example:
-        sdb bot status
-    """
+    """Show bot service status."""
     try:
         import psutil
         import os
         
-        click.echo("Bot Service Status:")
-        click.echo("")
+        table = Table(title="Bot Service Status", box=box.ROUNDED)
+        table.add_column("Service", style="cyan")
+        table.add_column("Status", justify="center")
+        table.add_column("Details", style="dim")
         
         current_pid = os.getpid()
         bot_running = False
@@ -194,58 +184,64 @@ def status() -> None:
                         else:
                             uptime_str = "unknown"
                         
-                        click.echo(f"  Bot: ✓ Running")
-                        click.echo(f"    PID: {bot_pid}")
-                        click.echo(f"    Status: {status_info}")
-                        click.echo(f"    Uptime: {uptime_str}")
+                        table.add_row(
+                            "Bot",
+                            "[green]✓ Running[/green]",
+                            f"PID: {bot_pid} | Status: {status_info} | Uptime: {uptime_str}"
+                        )
                         break
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 continue
         
         if not bot_running:
-            click.echo("  Bot: ✗ Not running")
+            table.add_row("Bot", "[red]✗ Not running[/red]", "")
         
         # Check web panel (if possible)
         try:
+            web_running = False
             for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
                 try:
                     cmdline = ' '.join(proc.info.get('cmdline', []))
                     if 'uvicorn' in cmdline.lower() and 'Systems.web.app' in cmdline:
-                        click.echo(f"  Web Panel: ✓ Running (PID: {proc.info['pid']})")
+                        web_running = True
+                        table.add_row(
+                            "Web Panel",
+                            "[green]✓ Running[/green]",
+                            f"PID: {proc.info['pid']}"
+                        )
                         break
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     continue
-            else:
-                click.echo("  Web Panel: ✗ Not running")
+            
+            if not web_running:
+                table.add_row("Web Panel", "[red]✗ Not running[/red]", "")
         except Exception:
-            click.echo("  Web Panel: ? Unknown")
+            table.add_row("Web Panel", "[yellow]? Unknown[/yellow]", "")
+        
+        console.print(table)
         
     except ImportError:
-        click.echo("  Bot: ? Unknown (psutil not installed)")
-        click.echo("  Install psutil for detailed status: pip install psutil")
+        console.print("[yellow]⚠[/yellow] psutil not installed. Install with: [cyan]pip install psutil[/cyan]")
         logger.debug("Service status checked (psutil not available)")
     except Exception as e:
         logger.error(f"Failed to get service status: {e}", exc_info=True)
-        click.echo(f"✗ Error: {str(e)}", err=True)
+        console.print(f"[red]Error:[/red] {str(e)}")
         sys.exit(1)
 
 
-@bot_group.command("stats")
+@app.command("stats", help="Show bot statistics")
 def stats() -> None:
-    """
-    Show bot statistics.
-    
-    Example:
-        sdb bot stats
-    """
+    """Show bot statistics."""
     try:
         async def _show_stats() -> None:
             config = get_config()
             
-            click.echo("Bot Statistics:")
-            click.echo("")
-            click.echo(f"  Bot Username: @{config.bot_username}")
-            click.echo(f"  Super Admin ID: {config.super_admin_id}")
+            table = Table(title="Bot Statistics", box=box.ROUNDED)
+            table.add_column("Metric", style="cyan")
+            table.add_column("Value", style="green")
+            
+            table.add_row("Bot Username", f"@{config.bot_username}")
+            table.add_row("Super Admin ID", str(config.super_admin_id))
             
             # Database stats
             try:
@@ -254,115 +250,102 @@ def stats() -> None:
                     try:
                         result = await session.execute(text("SELECT COUNT(*) FROM users"))
                         user_count = result.scalar()
-                        click.echo(f"  Total Users: {user_count}")
+                        table.add_row("Total Users", str(user_count))
                         
                         # Active users
                         result = await session.execute(
                             text("SELECT COUNT(*) FROM users WHERE is_active = true")
                         )
                         active_users = result.scalar()
-                        click.echo(f"  Active Users: {active_users}")
+                        table.add_row("Active Users", str(active_users))
                     except Exception:
-                        click.echo("  Total Users: N/A (database not initialized)")
-                        click.echo("  Active Users: N/A")
+                        table.add_row("Total Users", "[yellow]N/A (database not initialized)[/yellow]")
+                        table.add_row("Active Users", "[yellow]N/A[/yellow]")
                     
                     # Audit log entries
                     try:
                         result = await session.execute(text("SELECT COUNT(*) FROM audit_logs"))
                         audit_count = result.scalar()
-                        click.echo(f"  Audit Log Entries: {audit_count}")
+                        table.add_row("Audit Log Entries", str(audit_count))
                     except Exception:
-                        click.echo("  Audit Log Entries: N/A")
+                        table.add_row("Audit Log Entries", "[yellow]N/A[/yellow]")
             except Exception as e:
-                click.echo(f"  Database: Error ({e})")
+                table.add_row("Database", f"[red]Error ({e})[/red]")
+            
+            # Modules count
+            modules_dir = Path("Modules")
+            if modules_dir.exists():
+                modules = [d.name for d in modules_dir.iterdir() if d.is_dir() and not d.name.startswith("_")]
+                table.add_row("Installed Modules", str(len(modules)))
                 
-                # Modules count
-                modules_dir = Path("Modules")
-                if modules_dir.exists():
-                    modules = [d.name for d in modules_dir.iterdir() if d.is_dir() and not d.name.startswith("_")]
-                    click.echo(f"  Installed Modules: {len(modules)}")
-                    
-                    # Loaded modules
-                    try:
-                        loader = ModuleLoader(modules_dir)
-                        loaded = loader.get_loaded_modules()
-                        enabled_count = sum(1 for m in loaded.values() if m and m.enabled)
-                        click.echo(f"  Enabled Modules: {enabled_count}")
-                    except Exception:
-                        pass
-                
-                # Audit log entries
+                # Loaded modules
                 try:
-                    result = await session.execute(text("SELECT COUNT(*) FROM audit_logs"))
-                    audit_count = result.scalar()
-                    click.echo(f"  Audit Log Entries: {audit_count}")
+                    loader = ModuleLoader(modules_dir)
+                    loaded = loader.get_loaded_modules()
+                    enabled_count = sum(1 for m in loaded.values() if m and m.enabled)
+                    table.add_row("Enabled Modules", str(enabled_count))
                 except Exception:
                     pass
             
-            click.echo("")
-            click.echo("✓ Statistics retrieved")
+            console.print(table)
+            console.print("[green]✓ Statistics retrieved[/green]")
         
         asyncio.run(_show_stats())
         
     except Exception as e:
         logger.error(f"Failed to get bot stats: {e}", exc_info=True)
-        click.echo(f"✗ Error: {str(e)}", err=True)
+        console.print(f"[red]Error:[/red] {str(e)}")
         sys.exit(1)
 
 
-@bot_group.command("version")
+@app.command("version", help="Show bot version and information")
 def version() -> None:
-    """
-    Show bot version and information.
-    
-    Example:
-        sdb bot version
-    """
+    """Show bot version and information."""
     try:
         config = get_config()
         
-        click.echo("SwiftDevBot Information:")
-        click.echo("")
-        click.echo(f"  Version: 1.0.0")
-        click.echo(f"  Bot Username: @{config.bot_username}")
-        click.echo(f"  Database: {config.db_type}")
+        table = Table(title="SwiftDevBot Information", box=box.ROUNDED)
+        table.add_column("Property", style="cyan")
+        table.add_column("Value", style="green")
+        
+        table.add_row("Version", "1.0.0")
+        table.add_row("Bot Username", f"@{config.bot_username}")
+        table.add_row("Database", config.db_type)
+        
         if config.use_redis:
-            click.echo(f"  Redis: {config.redis_host}:{config.redis_port} (enabled)")
+            table.add_row("Redis", f"{config.redis_host}:{config.redis_port} [dim](enabled)[/dim]")
         else:
-            click.echo(f"  Redis: disabled (using MemoryStorage)")
-        click.echo(f"  Log Level: {config.log_level}")
-        click.echo("")
-        click.echo("✓ Information retrieved")
+            table.add_row("Redis", "[dim]disabled (using MemoryStorage)[/dim]")
+        
+        table.add_row("Log Level", config.log_level)
+        
+        console.print(table)
+        console.print("[green]✓ Information retrieved[/green]")
         
     except Exception as e:
         logger.error(f"Failed to get version: {e}", exc_info=True)
-        click.echo(f"✗ Error: {str(e)}", err=True)
+        console.print(f"[red]Error:[/red] {str(e)}")
         sys.exit(1)
 
 
-@bot_group.command("test")
+@app.command("test", help="Test bot configuration and connectivity")
 def test() -> None:
-    """
-    Test bot configuration and connectivity.
-    
-    Example:
-        sdb bot test
-    """
+    """Test bot configuration and connectivity."""
     try:
         async def _test_bot() -> None:
             config = get_config()
             issues = []
             
-            click.echo("Testing bot configuration...")
-            click.echo("")
+            console.print("[bold]Testing bot configuration...[/bold]")
+            console.print()
             
             # Test database
             try:
                 async with get_session_factory()() as session:
                     await session.execute(text("SELECT 1"))
-                click.echo("✓ Database: OK")
+                console.print("[green]✓[/green] Database: OK")
             except Exception as e:
-                click.echo(f"✗ Database: FAILED ({e})")
+                console.print(f"[red]✗[/red] Database: FAILED ({e})")
                 issues.append("Database connection failed")
             
             # Test Redis (if enabled)
@@ -371,16 +354,16 @@ def test() -> None:
                     import redis
                     r = redis.Redis(host=config.redis_host, port=config.redis_port, db=0)
                     r.ping()
-                    click.echo("✓ Redis: OK")
+                    console.print("[green]✓[/green] Redis: OK")
                 except ImportError:
-                    click.echo("⚠ Redis: Package not installed (pip install redis)")
-                    click.echo("   Using MemoryStorage instead")
+                    console.print("[yellow]⚠[/yellow] Redis: Package not installed ([cyan]pip install redis[/cyan])")
+                    console.print("   [dim]Using MemoryStorage instead[/dim]")
                 except Exception as e:
-                    click.echo(f"⚠ Redis: FAILED ({e})")
-                    click.echo("   Using MemoryStorage instead")
-                    click.echo("   Tip: Set USE_REDIS=false in .env to disable Redis checks")
+                    console.print(f"[yellow]⚠[/yellow] Redis: FAILED ({e})")
+                    console.print("   [dim]Using MemoryStorage instead[/dim]")
+                    console.print("   [dim]Tip: Set USE_REDIS=false in .env to disable Redis checks[/dim]")
             else:
-                click.echo("ℹ Redis: Disabled (using MemoryStorage)")
+                console.print("[dim]ℹ[/dim] Redis: Disabled (using MemoryStorage)")
             
             # Test bot token (if available)
             if config.bot_token and config.bot_token != "test_token":
@@ -389,62 +372,52 @@ def test() -> None:
                     bot = Bot(token=config.bot_token)
                     bot_info = await bot.get_me()
                     await bot.session.close()
-                    click.echo(f"✓ Bot Token: OK (@{bot_info.username})")
+                    console.print(f"[green]✓[/green] Bot Token: OK (@{bot_info.username})")
                 except Exception as e:
-                    click.echo(f"✗ Bot Token: FAILED ({e})")
+                    console.print(f"[red]✗[/red] Bot Token: FAILED ({e})")
                     issues.append("Bot token invalid")
             
             # Check modules
             modules_dir = Path("Modules")
             if modules_dir.exists():
                 modules = [d.name for d in modules_dir.iterdir() if d.is_dir() and not d.name.startswith("_")]
-                click.echo(f"✓ Modules: {len(modules)} installed")
+                console.print(f"[green]✓[/green] Modules: {len(modules)} installed")
             
-            click.echo("")
+            console.print()
             
             if issues:
-                click.echo(f"✗ Found {len(issues)} issues:")
+                console.print(f"[red]✗ Found {len(issues)} issues:[/red]")
                 for issue in issues:
-                    click.echo(f"  - {issue}")
+                    console.print(f"  [red]-[/red] {issue}")
                 sys.exit(1)
             else:
-                click.echo("✓ All tests passed!")
+                console.print("[green]✓ All tests passed![/green]")
         
         asyncio.run(_test_bot())
         
     except Exception as e:
         logger.error(f"Bot test failed: {e}", exc_info=True)
-        click.echo(f"✗ Error: {str(e)}", err=True)
+        console.print(f"[red]Error:[/red] {str(e)}")
         sys.exit(1)
 
 
-@bot_group.command("clean")
-@click.option("--logs", is_flag=True, help="Clean old log files")
-@click.option("--cache", is_flag=True, help="Clean cache files")
-@click.option("--all", "clean_all", is_flag=True, help="Clean everything")
-def clean(logs: bool, cache: bool, clean_all: bool) -> None:
-    """
-    Clean temporary files and old data.
-    
-    Options:
-        --logs: Clean old log files
-        --cache: Clean cache files (__pycache__)
-        --all: Clean everything
-    
-    Example:
-        sdb bot clean --logs
-        sdb bot clean --all
-    """
+@app.command("clean", help="Clean temporary files and old data")
+def clean(
+    logs: Annotated[bool, typer.Option("--logs", help="Clean old log files")] = False,
+    cache: Annotated[bool, typer.Option("--cache", help="Clean cache files")] = False,
+    all_files: Annotated[bool, typer.Option("--all", help="Clean everything")] = False,
+) -> None:
+    """Clean temporary files and old data."""
     try:
         from pathlib import Path
         import shutil
         
-        if clean_all:
+        if all_files:
             logs = True
             cache = True
         
         if not (logs or cache):
-            click.echo("No cleanup options specified. Use --logs, --cache, or --all")
+            console.print("[yellow]⚠[/yellow] No cleanup options specified. Use [cyan]--logs[/cyan], [cyan]--cache[/cyan], or [cyan]--all[/cyan]")
             return
         
         cleaned = []
@@ -474,12 +447,11 @@ def clean(logs: bool, cache: bool, clean_all: bool) -> None:
             cleaned.append(f"{count} cache directories")
         
         if cleaned:
-            click.echo(f"✓ Cleaned: {', '.join(cleaned)}")
+            console.print(f"[green]✓[/green] Cleaned: {', '.join(cleaned)}")
         else:
-            click.echo("✓ Nothing to clean")
+            console.print("[green]✓[/green] Nothing to clean")
         
     except Exception as e:
         logger.error(f"Clean failed: {e}", exc_info=True)
-        click.echo(f"✗ Error: {str(e)}", err=True)
+        console.print(f"[red]Error:[/red] {str(e)}")
         sys.exit(1)
-

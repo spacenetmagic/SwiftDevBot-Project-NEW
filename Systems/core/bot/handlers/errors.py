@@ -108,5 +108,5 @@ def register_error_handlers(dp: Dispatcher) -> None:
     router.message.register(handle_unknown_command)
     dp.include_router(router)
     
-    logger.info("Error handlers registered")
+    logger.debug("Error handlers registered")
 

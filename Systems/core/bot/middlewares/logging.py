@@ -82,17 +82,20 @@ class LoggingMiddleware(BaseMiddleware):
             "timestamp": datetime.utcnow().isoformat(),
         }
         
-        logger.info(f"Bot event: {event_type} | User: {user_id} (@{username}) | Command: {command}")
-        logger.debug(f"Event details: {log_data}")
+        # Compact event logging (only for messages/callbacks, not all events)
+        if isinstance(event, (Message, CallbackQuery)):
+            event_info = event_type
+            if user_id:
+                event_info += f" | User: {user_id}"
+                if username:
+                    event_info += f" (@{username})"
+            if command:
+                event_info += f" | {command}"
+            logger.debug(event_info)
         
         try:
-            result = await handler(event, data)
-            logger.debug(f"Handler executed successfully for event: {event_type}")
-            return result
+            return await handler(event, data)
         except Exception as e:
-            logger.error(
-                f"Handler error for event {event_type}: {e}",
-                exc_info=True,
-            )
+            logger.error(f"Handler error | {event_type} | {e}", exc_info=True)
             raise
 

@@ -130,11 +130,31 @@ uvicorn Systems.web.app:app --reload --port 8000
 
 ## 🎯 Проверка работоспособности
 
+### 0. Установка автодополнения (опционально)
+
+SwiftDevBot CLI использует Typer с поддержкой автодополнения из коробки:
+
+```bash
+# Для bash
+./sdb.py --install-completion bash
+
+# Для zsh
+./sdb.py --install-completion zsh
+
+# Для fish
+./sdb.py --install-completion fish
+
+# Для PowerShell (Windows/WSL)
+./sdb.py --install-completion powershell
+```
+
+После установки перезапустите терминал и наслаждайтесь автодополнением команд!
+
 ### 1. Проверка конфигурации
 
 ```bash
 # Тест всех подключений
-sdb bot test
+./sdb.py bot test
 
 # Должен показать:
 # ✓ Database: OK
