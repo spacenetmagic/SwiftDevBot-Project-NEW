@@ -2,6 +2,8 @@
 Unit tests for AuditRepository.
 """
 
+import asyncio
+
 import pytest
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
@@ -126,11 +128,17 @@ async def test_get_logs_with_limit(audit_repo: AuditRepository, test_user) -> No
     # Create more logs than limit
     for i in range(10):
         await audit_repo.log(test_user.telegram_id, f"action{i}", f"resource{i}")
+        await asyncio.sleep(0.01)
     await audit_repo.session.commit()
-    
+
     logs = await audit_repo.get_logs(test_user.telegram_id, limit=5)
-    
+
     assert len(logs) == 5
+    actions = [log.action for log in logs]
+    expected_actions = [f"action{i}" for i in range(9, 4, -1)]
+    assert actions == expected_actions
+    ids = [log.id for log in logs]
+    assert ids == sorted(ids, reverse=True)
 
 
 @pytest.mark.asyncio

@@ -41,9 +41,9 @@
 - `sdb dev shell` - Python shell
 
 ### 💾 backup - Резервные копии (3 команды)
-- `sdb backup create` - Создать backup
-- `sdb backup restore` - Восстановить backup
-- `sdb backup list` - Список backups
+- `sdb backup create` - Создать резервную копию
+- `sdb backup restore` - Восстановить резервную копию
+- `sdb backup list` - Список резервных копий
 
 ---
 

@@ -95,7 +95,7 @@ class AuditRepository:
         stmt = (
             select(AuditLog)
             .where(AuditLog.user_id == user_id)
-            .order_by(desc(AuditLog.timestamp))
+            .order_by(desc(AuditLog.timestamp), desc(AuditLog.id))
             .limit(limit)
         )
         result = await self.session.execute(stmt)
@@ -124,7 +124,7 @@ class AuditRepository:
         stmt = (
             select(AuditLog)
             .where(AuditLog.action == action)
-            .order_by(desc(AuditLog.timestamp))
+            .order_by(desc(AuditLog.timestamp), desc(AuditLog.id))
             .limit(limit)
         )
         result = await self.session.execute(stmt)

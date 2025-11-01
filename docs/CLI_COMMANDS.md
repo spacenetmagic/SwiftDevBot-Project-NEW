@@ -382,101 +382,24 @@ sdb module watch
 
 ## 👤 Пользователи (user)
 
-Управление пользователями бота.
-
-### `sdb user add <telegram_id>`
-
-Добавить нового пользователя.
-
-**Аргументы:**
-- `telegram_id` - Telegram ID пользователя (обязательно, число)
-
-**Опции:**
-- `--username <username>` - Username (опционально)
-- `--full-name <name>` - Полное имя (опционально)
-- `--role <role>` - Роль: `user`, `admin`, `super_admin` (по умолчанию: `user`)
-
-**Примеры:**
-```bash
-sdb user add 123456789
-sdb user add 123456789 --username testuser --role admin
-sdb user add 987654321 --full-name "John Doe" --role super_admin
-```
-
-**Результат:** Пользователь создается или обновляется в базе данных.
-
----
+Команды управления пользователями сейчас переносятся с Click на Typer. В актуальной версии доступна только заглушка, которая сообщает о миграции. Полный функционал будет возвращён в одном из следующих релизов.
 
 ### `sdb user list`
 
-Список всех пользователей.
-
-**Опции:**
-- `--role <role>` - Фильтр по роли: `user`, `admin`, `super_admin`
-- `--limit <number>` - Максимальное количество пользователей (по умолчанию: 100)
-
-**Примеры:**
-```bash
-sdb user list
-sdb user list --role admin
-sdb user list --limit 50
-```
-
-**Вывод:**
-```
-Users (5):
-ID           Username             Role         Status  
-------------------------------------------------------------
-123456789    testuser             user         Active  
-987654321    adminuser            admin        Active  
-555555555    superadmin           super_admin  Active  
-```
-
----
-
-### `sdb user role <telegram_id> <role>`
-
-Изменить роль пользователя.
-
-**Аргументы:**
-- `telegram_id` - Telegram ID пользователя (обязательно)
-- `role` - Новая роль: `user`, `admin`, `super_admin` (обязательно)
-
-**Примеры:**
-```bash
-sdb user role 123456789 admin
-sdb user role 987654321 super_admin
-```
-
-**Результат:** Роль пользователя обновляется в базе данных.
-
----
-
-### `sdb user permissions <telegram_id>`
-
-Показать разрешения пользователя.
-
-**Аргументы:**
-- `telegram_id` - Telegram ID пользователя (обязательно)
+Временно выводит предупреждение о миграции пользовательских команд.
 
 **Пример:**
 ```bash
-sdb user permissions 123456789
+sdb user list
 ```
 
 **Вывод:**
 ```
-User: testuser (123456789)
-Role: admin
-Active: True
-
-Permissions (5):
-  - user.read
-  - user.write
-  - module.read
-  - module.write
-  - admin.access
+⚠ User management commands are being migrated to Typer.
+This command will be fully implemented soon.
 ```
+
+> ℹ️ Остальные подкоманды (`add`, `role`, `permissions`) пока недоступны. Следите за обновлениями в CHANGELOG.
 
 ---
 
